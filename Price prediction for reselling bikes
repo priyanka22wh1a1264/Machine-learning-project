@@ -1,0 +1,124 @@
+import csv
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import os
+import re
+
+downloads_path = os.path.join(os.path.expanduser('~'), 'Downloads')
+driver = webdriver.Chrome()
+driver.get("https://www.bikedekho.com/used-street+sports-naked+sports+tourer+cafe-racer+bikes+in+hyderabad")
+time.sleep(5)
+
+last_height = driver.execute_script("return document.body.scrollHeight")
+'''while True:
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    time.sleep(2)  # Adjust sleep time if necessary
+    new_height = driver.execute_script("return document.body.scrollHeight")
+    if new_height == last_height:
+        break
+    last_height = new_height'''
+
+bikes = driver.find_elements(By.XPATH, "//div[@class='reportAd  gsc_col-xs-12 gsc_col-sm-6 gsc_col-md-6 gsc_col-lg-4 append_list compareCardDetail']")
+print(len(bikes))
+
+csv_file_path = os.path.join(downloads_path, 'new.csv')
+with open(csv_file_path, 'w', newline='', encoding='utf-8') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['Bike Name', 'KM Driven', 'Owner Info', 'Price', 'Engine', 'Power Value', 'Torque Value', 'Mileage', 'Kerb Weight', 'Type of Brakes'])
+
+    for bike in bikes:
+        bikename = bike.find_element(By.XPATH, "div/div/div/a")
+        bikename1 = bikename.text
+        print(bikename1)
+
+        # Parsing KM Driven
+        try:
+            bikekm_text = bike.find_element(By.XPATH, "div/div/div/span[1]").text.replace(' km', '').replace(',', '')
+            bikekm = float(bikekm_text)
+        except ValueError:
+            bikekm = "N/A"
+        print(bikekm)
+
+        # Parsing Owner Info
+        bikeown = bike.find_element(By.XPATH, "div/div/div/span[3]").text.replace('•', '').strip()
+        print(bikeown)
+
+        # Parsing Price
+        bikeprice_raw = bike.find_element(By.XPATH, ".//span[@class='amnt']").text.replace('*', '').replace(',', '')
+        if ' Lakh' in bikeprice_raw:
+            bikeprice = float(bikeprice_raw.replace(' Lakh', '')) * 100000
+        else:
+            bikeprice = float(bikeprice_raw)
+        print(bikeprice)
+
+        driver.execute_script("arguments[0].click();", bikename)
+        time.sleep(5)
+
+        try:
+            engine = driver.find_element(By.XPATH, "(//li[@class='gsc_col-xs-4 gsc_col-sm-2'])[1]/div[2]/span").text
+            if engine == "Engine":
+                engine1 = float(driver.find_element(By.XPATH, "(//li[@class='gsc_col-xs-4 gsc_col-sm-2'])[1]/div[2]").text.split('\n')[1].replace('cc', ''))
+            else:
+                engine1 = " "
+        except:
+            engine1 = " "
+
+        try:
+            specValue = float(driver.find_element(By.XPATH, "(//li[@class='gsc_col-xs-4 gsc_col-sm-2'])[2]/div[2]").text.split('\n')[1].replace('PS', ''))
+        except:
+            specValue = " "
+
+        try:
+            specValue1 = float(driver.find_element(By.XPATH, "(//li[@class='gsc_col-xs-4 gsc_col-sm-2'])[3]/div[2]").text.split('\n')[1].replace('Nm', ''))
+        except:
+            specValue1 = " "
+
+        try:
+            mileage = driver.find_element(By.XPATH, "(//li[@class='gsc_col-xs-4 gsc_col-sm-2'])[4]/div[2]/span").text
+            if mileage == "Mileage":
+                mileageV = driver.find_element(By.XPATH, "(//li[@class='gsc_col-xs-4 gsc_col-sm-2'])[4]/div[2]").text
+                mileageValue = float(re.sub(r'[^0-9.]', '', mileageV))
+            else:
+                mileageValue = " "
+        except:
+            mileageValue = " "
+
+        try:
+            kerbWeight = driver.find_element(By.XPATH, "(//li[@class='gsc_col-xs-4 gsc_col-sm-2'])[5]/div[2]/span").text
+            if kerbWeight == "Kerb Weight":
+                spec_value = driver.find_element(By.XPATH, "(//li[@class='gsc_col-xs-4 gsc_col-sm-2'])[5]/div[2]").text
+                kerb1 = float(re.sub(r'[^0-9.]', '', spec_value))
+                print(kerb1)
+            else:
+                kerb1 = " "
+        except:
+            kerb1 = " "
+
+        try:
+            brakes = driver.find_element(By.XPATH, "(//li[@class='gsc_col-xs-4 gsc_col-sm-2'])[6]/div[2]/span").text
+            if brakes == "Brakes":
+                brakeValue = driver.find_element(By.XPATH, "(//li[@class='gsc_col-xs-4 gsc_col-sm-2'])[6]/div[2]").text.split('\n')[1]
+            else:
+                brakeValue = " "
+        except:
+            brakeValue = " "
+
+        close = driver.find_element(By.XPATH, "(//div[@class='gsc_closeBtn'])[5]")
+        driver.execute_script("arguments[0].click();", close)
+
+        writer.writerow([
+            bikename1,
+            float(bikekm) if bikekm != "N/A" else bikekm,
+            bikeown,
+            float(bikeprice),
+            float(engine1) if engine1 != " " else engine1,
+            float(specValue) if specValue != " " else specValue,
+            float(specValue1) if specValue1 != " " else specValue1,
+            float(mileageValue) if mileageValue != " " else mileageValue,
+            float(kerb1) if kerb1 != " " else kerb1,
+            brakeValue
+        ])
+
+driver.quit()
+print(f"Data saved to '{csv_file_path}'")
